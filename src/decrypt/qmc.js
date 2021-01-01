@@ -5,7 +5,8 @@ import {
     GetFileInfo,
     GetMetaCoverURL,
     GetWebImage,
-    IXAREA_API_ENDPOINT
+    IXAREA_API_ENDPOINT,
+    WriteMp3Meta
 } from "./util";
 import {QmcMaskCreate58, QmcMaskDetectMflac, QmcMaskDetectMgg, QmcMaskGetDefault} from "./qmcMask";
 import {fromByteArray as Base64Encode, toByteArray as Base64Decode} from 'base64-js'
@@ -29,7 +30,12 @@ const HandlerMap = {
     "qmcflac": {handler: QmcMaskGetDefault, ext: "flac", detect: false},
     "bkcmp3": {handler: QmcMaskGetDefault, ext: "mp3", detect: false},
     "bkcflac": {handler: QmcMaskGetDefault, ext: "flac", detect: false},
-    "tkm": {handler: QmcMaskGetDefault, ext: "m4a", detect: false}
+    "tkm": {handler: QmcMaskGetDefault, ext: "m4a", detect: false},
+    "666c6163": {handler: QmcMaskGetDefault, ext: "flac", detect: false},
+    "6d7033": {handler: QmcMaskGetDefault, ext: "mp3", detect: false},
+    "6f6767": {handler: QmcMaskGetDefault, ext: "ogg", detect: false},
+    "6d3461": {handler: QmcMaskGetDefault, ext: "m4a", detect: false},
+    "776176": {handler: QmcMaskGetDefault, ext: "wav", detect: false}
 };
 
 export async function Decrypt(file, raw_filename, raw_ext) {
@@ -80,20 +86,17 @@ export async function Decrypt(file, raw_filename, raw_ext) {
                 imgUrl = imageInfo.url
                 try {
                     if (ext === "mp3") {
-                        let writer = new ID3Writer(musicDecoded)
-                        writer.setFrame('APIC', {
-                            type: 3,
-                            data: imageInfo.buffer,
-                            description: "Cover",
-                        })
-                        writer.addTag();
-                        musicDecoded = writer.arrayBuffer
+                        musicDecoded = await WriteMp3Meta(musicDecoded,
+                            info.artist.split(" _ "), info.title, "",
+                            imageInfo.buffer, "Cover", musicMeta)
                         musicBlob = new Blob([musicDecoded], {type: mime});
                     } else if (ext === 'flac') {
                         const writer = new MetaFlac(Buffer.from(musicDecoded))
                         writer.importPictureFromBuffer(Buffer.from(imageInfo.buffer))
                         musicDecoded = writer.save()
                         musicBlob = new Blob([musicDecoded], {type: mime});
+                    } else {
+                        console.info("writing metadata for " + ext + " is not being supported for now")
                     }
                 } catch (e) {
                     console.warn("Error while appending cover image to file " + e)
